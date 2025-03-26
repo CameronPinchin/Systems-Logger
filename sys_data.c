@@ -1,3 +1,18 @@
+
+/*
+Author: Cameron Pinchin
+Date: March 26th, 2025
+Description: System logger for linux, meant to be run on a Raspberry Pi.
+ - Will be deployable on other systems soon.
+ 
+
+Notes: Allow for dynamic paths for system information, as opposed
+        to statically assigning paths. Makes the system more deployable
+        and resistant.
+
+*/
+
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -37,6 +52,8 @@ void log_data(float cpu_temp, float mem_usage, float net_usage){
         fprintf(fptr, "[%s]\n", timestamp);
         fprintf(fptr, "CPU Temperature: %.1f°C\n", cpu_temp);
         fprintf(fptr, "   Memory Usage: %.1f/GB\n", mem_usage);
+        // This needs to be changed, output will not be as simple as a singular float.
+        // - depends on how I extract it, can extracted transmitted and received bytes over a given protocol (eth for ex).
         fprintf(fptr, "   Net Actvitiy: %.1fKB/s\n", net_usage);
 
         fclose(fptr);
