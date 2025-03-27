@@ -18,6 +18,7 @@ Notes: Allow for dynamic paths for system information, as opposed
 #include <time.h>
 #include <pthread.h>
 #include <string.h>
+#include <math.h>
 
 #define CPUIINFO_FILE "/sys/class/thermal/thermal_zone0/temp"
 #define MEMINFO_FILE "/proc/meminfo"
