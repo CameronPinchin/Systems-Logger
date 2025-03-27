@@ -59,7 +59,7 @@ void log_data(){
 
     char timestamp[20];
     get_timestamp(timestamp, 20);
-
+    printf("Printing: %d, %d, %d, %d \n", cpu_temp, mem_usage, transmit_rate, received_rate);
     fprintf(fptr, "                           Timestamp: [%s]\n", timestamp);
     fprintf(fptr, "                     CPU Temperature: %d°C\n", cpu_temp);
     fprintf(fptr, "                        Memory Usage: %d mB\n", mem_usage);
@@ -72,20 +72,14 @@ void log_data(){
 }
 
 void signal_data_ready(){
-    pthread_mutex_lock(&data_mutex);
     ready_count++;
-
     if(ready_count == 3){
+        pthread_mutex_unlock(&data_mutex);
         log_data();
         ready_count = 0;
-        printf("[DEBUG] Resetting ready_count \n");
+        
         pthread_cond_broadcast(&data_ready);
-    } else {
-        // Wait until all threads have sent their data
-        pthread_cond_wait(&data_ready, &data_mutex);
-    }
-    printf("[DEBUG] After signal: ready_count = %d \n", ready_count);
-    pthread_mutex_unlock(&data_mutex);
+    } 
 }
 
 void* get_temp(void* arg){
@@ -117,11 +111,9 @@ void* get_temp(void* arg){
         signal_data_ready();
         pthread_mutex_unlock(&data_mutex);
 
-        //printf("[DEBUG] Temp calling signal_data_ready()\n");
-
-        
-        sleep(5);
+        sleep(2);
     }
+
     return NULL;
 }
 
@@ -149,20 +141,18 @@ void* get_mem_usage(void* arg){
         pthread_mutex_lock(&data_mutex);
         signal_data_ready();
         pthread_mutex_unlock(&data_mutex);
-
-        //printf("[DEBUG] Memory calling signal_data_ready()\n");
         
-        sleep(5);
+        sleep(2);
     
     }
+
     return NULL;
 }
 
 void* get_net_usage(void* arg){
     FILE *net_ptr;
-    int sys_net;
     unsigned long long sys_received, sys_transmitted;
-    unsigned long long last_received = 0, last_transmitted = 0;
+    
     while(!should_exit){
         printf("[NET] Reading net usage... \n");
         net_ptr = fopen(NETINFO_FILE, "r");
@@ -185,25 +175,16 @@ void* get_net_usage(void* arg){
             }
         }
 
+        received_rate = (int)round((float)sys_received/ 1024.0);  
+        transmit_rate = (int)round((float)sys_transmitted/ 1024.0); 
 
-        unsigned long long received_diff = sys_received - last_received;
-        unsigned long long transmitted_diff = sys_transmitted - last_transmitted;
-
-        pthread_mutex_lock(&data_mutex);
-        received_rate = (int)round((float)received_diff/ 1024.0);  
-        transmit_rate = (int)round((float)transmitted_diff / 1024.0);  
+        pthread_mutex_lock(&data_mutex); 
         signal_data_ready();
         pthread_mutex_unlock(&data_mutex);
 
-
-
-        last_received = sys_received;
-        last_transmitted = sys_transmitted;
-
-       
-        sleep(5);
-
+       sleep(2);
     }
+    
     return NULL;
 }
 
@@ -223,8 +204,8 @@ int main() {
     pthread_create(&mem_thread, NULL, get_mem_usage, NULL);
     pthread_create(&net_thread, NULL, get_net_usage, NULL);
 
-    sleep(15);
-    should_exit = 1;
+    sleep(10);
+    should_exit = 1; 
 
     pthread_join(temp_thread, NULL);
     pthread_join(mem_thread, NULL);
