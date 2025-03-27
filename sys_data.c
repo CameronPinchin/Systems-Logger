@@ -57,7 +57,7 @@ void log_data(int cpu_temp, int mem_usage, int transmit_rate, int received_rate)
 
     fprintf(fptr, "                           Timestamp: [%s]\n", timestamp);
     fprintf(fptr, "                     CPU Temperature: %d°C\n", cpu_temp);
-    fprintf(fptr, "                        Memory Usage: %d GB\n", mem_usage);
+    fprintf(fptr, "                        Memory Usage: %d mB\n", mem_usage);
     // This needs to be changed, output will not be as simple as a singular float.
     // - depends on how I extract it, can extracted transmitted and received bytes over a given protocol (eth for ex).
     fprintf(fptr, "[Interface: lo]    Transmission Rate: %d KB/s\n", transmit_rate);
@@ -78,6 +78,12 @@ void* get_temp(void* arg){
 
         if(temp_ptr == NULL){
             printf("Error! Cannot access: %s \n", CPUIINFO_FILE);
+            exit(1);
+        }
+
+
+        if(fscanf(temp_ptr, "%d", &sys_temp) != 1){
+            printf("Error: Could not read temperature. \n");
             exit(1);
         }
 
