@@ -112,7 +112,7 @@ void* get_temp(void* arg){
         cpu_temp = (int)round(temp_in_c);
         pthread_mutex_unlock(&data_mutex);
 
-        printf("[DEBUG] Network calling signal_data_ready()\n");
+        printf("[DEBUG] Temp calling signal_data_ready()\n");
 
         signal_data_ready();
         sleep(5);
@@ -144,6 +144,7 @@ void* get_mem_usage(void* arg){
         mem_usage = (sys_mem_total - sys_mem_available) / CONVERSION_CONST;
         pthread_mutex_unlock(&data_mutex);
 
+        printf("[DEBUG] Memory calling signal_data_ready()\n");
         signal_data_ready();
         sleep(5);
     
@@ -191,6 +192,8 @@ void* get_net_usage(void* arg){
 
         last_received = sys_received;
         last_transmitted = sys_transmitted;
+
+        printf("[DEBUG] Network calling signal_data_ready()\n");
 
         signal_data_ready();
         sleep(5);
