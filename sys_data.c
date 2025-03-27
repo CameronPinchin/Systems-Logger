@@ -4,11 +4,7 @@ Author: Cameron Pinchin
 Date: March 26th, 2025
 Description: System logger for linux, meant to be run on a Raspberry Pi.
  - Will be deployable on other systems soon.
- 
-
-Notes: Allow for dynamic paths for system information, as opposed
-        to statically assigning paths. Makes the system more deployable
-        and resistant.
+ - Mainly wanted to get more experience with multi-threadding. 
 
 */
 
@@ -25,13 +21,7 @@ Notes: Allow for dynamic paths for system information, as opposed
 #define NETINFO_FILE "/proc/net/dev"
 
 #define CONVERSION_CONST 1024
-#define MILIDEGREE_TO_C 1000
-
-/*
-CPU Temp: Read from /sys/class/thermal/thermal_zone0/temp
-Memory Usage: Parse /proc/meminfo
-Network Stats: Parse /proc/net/dev
-*/
+#define MILLIDEGREE_TO_C 1000.0f
 
 pthread_mutex_t data_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t data_ready = PTHREAD_COND_INITIALIZER;
@@ -68,7 +58,6 @@ void log_data(){
     fclose(fptr);
 
     pthread_mutex_unlock(&data_mutex);
-    
 }
 
 void signal_data_ready(){
@@ -95,7 +84,6 @@ void* get_temp(void* arg){
             exit(1);
         }
 
-
         if(fscanf(temp_ptr, "%d", &sys_temp) != 1){
             printf("Error: Could not read temperature. \n");
             fclose(temp_ptr);
@@ -104,7 +92,7 @@ void* get_temp(void* arg){
 
         fclose(temp_ptr);
 
-        float temp_in_c = sys_temp / 1000.0f;
+        float temp_in_c = sys_temp / MILLIDEGREE_TO_C;
         cpu_temp = (int)round(temp_in_c);
 
         pthread_mutex_lock(&data_mutex);
@@ -143,7 +131,6 @@ void* get_mem_usage(void* arg){
         pthread_mutex_unlock(&data_mutex);
         
         sleep(2);
-    
     }
 
     return NULL;
@@ -175,8 +162,8 @@ void* get_net_usage(void* arg){
             }
         }
 
-        received_rate = (int)round((float)sys_received/ 1024.0);  
-        transmit_rate = (int)round((float)sys_transmitted/ 1024.0); 
+        received_rate = (int)round((float)sys_received/ CONVERSION_CONST);  
+        transmit_rate = (int)round((float)sys_transmitted/ CONVERSION_CONST); 
 
         pthread_mutex_lock(&data_mutex); 
         signal_data_ready();
@@ -212,5 +199,4 @@ int main() {
     pthread_join(net_thread, NULL);
 
     return 0;
-
 }
