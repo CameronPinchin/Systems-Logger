@@ -164,10 +164,13 @@ void* get_net_usage(void* arg){
         }
 
 
-        float received_rate = (sys_received - last_received) / 1024.0;  
-        float transmitted_rate = (sys_transmitted - last_transmitted) / 1024.0;  
+        unsigned long long received_diff = sys_received - last_received;
+        unsigned long long transmitted_diff = sys_transmitted - last_transmitted;
 
-        printf("Received rate: %f KB/s, Transmitted rate: %f KB/s\n", received_rate, transmitted_rate);
+        float received_rate = (float)received_diff/ 1024.0;  
+        float transmitted_rate = (float)transmitted_diff / 1024.0;  
+
+        printf("Received rate: %.2f KB/s, Transmitted rate: %.2f KB/s\n", received_rate, transmitted_rate);
 
         int rounded_received_rate = (int)round(received_rate);
         int rounded_transmit_rate = (int)round(transmitted_rate);
