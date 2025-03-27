@@ -55,22 +55,15 @@ void log_data(int cpu_temp, int mem_usage, int transmit_rate, int received_rate)
 
     char timestamp[20];
     get_timestamp(timestamp, 20);
+
     fprintf(fptr, "                           Timestamp: [%s]\n", timestamp);
-    if(cpu_temp != 0){
-        fprintf(fptr, "                     CPU Temperature: %d°C\n", cpu_temp);
-    }
-    if(mem_usage != 0){
-        fprintf(fptr, "                        Memory Usage: %d mB\n", mem_usage);
-    }
-    if(transmit_rate != 0){
-        fprintf(fptr, "[Interface: lo]    Transmission Rate: %d KB/s\n", transmit_rate);
-    }
-    if(received_rate != 0){
-        fprintf(fptr, "[Interface: lo]        Received Rate: %d KB/s\n", received_rate);
-    }    
+    fprintf(fptr, "                     CPU Temperature: %d°C\n", cpu_temp);
+    fprintf(fptr, "                        Memory Usage: %d mB\n", mem_usage);
     // This needs to be changed, output will not be as simple as a singular float.
     // - depends on how I extract it, can extracted transmitted and received bytes over a given protocol (eth for ex).
-    
+    fprintf(fptr, "[Interface: lo]    Transmission Rate: %d KB/s\n", transmit_rate);
+    fprintf(fptr, "[Interface: lo]        Received Rate: %d KB/s\n", received_rate);
+
     fclose(fptr);
     pthread_mutex_unlock(&log_mutex);
     
