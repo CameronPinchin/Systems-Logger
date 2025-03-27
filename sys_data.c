@@ -139,8 +139,8 @@ void* get_mem_usage(void* arg){
 void* get_net_usage(void* arg){
     FILE *net_ptr;
     int sys_net;
-    int sys_received, sys_transmitted;
-    int last_received = 0, last_transmitted = 0;
+    float sys_received, sys_transmitted;
+    float last_received = 0, last_transmitted = 0;
     while(!should_exit){
         printf("[NET] Reading net usage... \n");
         net_ptr = fopen(NETINFO_FILE, "r");
@@ -158,6 +158,11 @@ void* get_net_usage(void* arg){
                 break;
             }
         }
+
+        sys_received = (float)sys_received;
+        sys_transmitted = (float)sys_transmitted;
+        last_received = (float)last_received;
+        last_transmitted = (float)last_transmitted;
 
         float received_rate = (sys_received - last_received) / 1024;
         float transmitted_rate = (sys_transmitted - last_transmitted) / 1024;
