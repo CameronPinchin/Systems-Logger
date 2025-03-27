@@ -67,7 +67,6 @@ void log_data(){
     fprintf(fptr, "[Interface: lo]        Received Rate: %d KB/s\n", received_rate);
     fclose(fptr);
 
-    ready_count = 0;
     pthread_mutex_unlock(&data_mutex);
     
 }
