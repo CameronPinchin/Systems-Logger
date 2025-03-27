@@ -139,8 +139,8 @@ void* get_mem_usage(void* arg){
 void* get_net_usage(void* arg){
     FILE *net_ptr;
     int sys_net;
-    float sys_received, sys_transmitted;
-    float last_received = 0, last_transmitted = 0;
+    unsigned long long sys_received, sys_transmitted;
+    unsigned long long last_received = 0, last_transmitted = 0;
     while(!should_exit){
         printf("[NET] Reading net usage... \n");
         net_ptr = fopen(NETINFO_FILE, "r");
@@ -153,22 +153,19 @@ void* get_net_usage(void* arg){
         char lines[256];
 
         while(fgets(lines, sizeof(lines), net_ptr)){
+            unsigned long long tmp_received, tmp_transmitted;
             if(strstr(lines, "lo")){
-                sscanf(lines, "%*s %d %*d %*d %*d %*d %*d %*d %*d %d", &sys_received, &sys_transmitted);
+                sscanf(lines, "%*s %d %*d %*d %*d %*d %*d %*d %*d %d", &tmp_received, &tmp_transmitted);
+                sys_received = tmp_received;
+                sys_transmitted = tmp_transmitted;
+                printf("Received: %llu, Transmitted: %llu\n", sys_received, sys_transmitted);
                 break;
             }
         }
 
-        sys_received = (float)sys_received;
-        sys_transmitted = (float)sys_transmitted;
 
-        printf("Received: %f, Transmitted: %f\n", sys_received, sys_transmitted);
-
-        last_received = (float)last_received;
-        last_transmitted = (float)last_transmitted;
-
-        float received_rate = (sys_received - last_received) / 1024;
-        float transmitted_rate = (sys_transmitted - last_transmitted) / 1024;
+        float received_rate = (sys_received - last_received) / 1024.0;  
+        float transmitted_rate = (sys_transmitted - last_transmitted) / 1024.0;  
 
         printf("Received rate: %f KB/s, Transmitted rate: %f KB/s\n", received_rate, transmitted_rate);
 
@@ -177,8 +174,6 @@ void* get_net_usage(void* arg){
 
         last_received = sys_received;
         last_transmitted = sys_transmitted;
-
-        
 
         log_data(0, 0, rounded_transmit_rate, rounded_received_rate);
         sleep(4);
