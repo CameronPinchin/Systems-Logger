@@ -161,17 +161,24 @@ void* get_net_usage(void* arg){
 
         sys_received = (float)sys_received;
         sys_transmitted = (float)sys_transmitted;
+
+        printf("Received: %f, Transmitted: %f\n", sys_received, sys_transmitted);
+
         last_received = (float)last_received;
         last_transmitted = (float)last_transmitted;
 
         float received_rate = (sys_received - last_received) / 1024;
         float transmitted_rate = (sys_transmitted - last_transmitted) / 1024;
 
+        printf("Received rate: %f KB/s, Transmitted rate: %f KB/s\n", received_rate, transmitted_rate);
+
         int rounded_received_rate = (int)round(received_rate);
         int rounded_transmit_rate = (int)round(transmitted_rate);
 
         last_received = sys_received;
         last_transmitted = sys_transmitted;
+
+        
 
         log_data(0, 0, rounded_transmit_rate, rounded_received_rate);
         sleep(4);
