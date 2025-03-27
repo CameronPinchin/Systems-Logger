@@ -91,7 +91,10 @@ void* get_temp(void* arg){
         printf("[TEMP] Raw Temperature (in millidegrees): %d\n", sys_temp);
 
         fclose(temp_ptr);
-        sys_temp = sys_temp / 1000;
+
+        float temp_in_c = sys_temp / 1000;
+        sys_temp = (int)round(temp_in_c);
+
         log_data(sys_temp, 0, 0, 0);
         sleep(2);
         if(should_exit){
@@ -155,13 +158,16 @@ void* get_net_usage(void* arg){
             }
         }
 
-        int received_rate = (sys_received - last_received) / 1024;
-        int transmitted_rate = (sys_transmitted - last_transmitted) / CONVERSION_CONST;
+        float received_rate = (sys_received - last_received) / 1024;
+        float transmitted_rate = (sys_transmitted - last_transmitted) / 1024;
+
+        int rounded_received_rate = (int)round(received_rate);
+        int rounded_transmit_rate = (int)round(transmitted_rate);
 
         last_received = sys_received;
         last_transmitted = sys_transmitted;
 
-        log_data(0, 0, transmitted_rate, received_rate);
+        log_data(0, 0, rounded_transmit_rate, rounded_received_rate);
         sleep(4);
         if(should_exit){
             break;
