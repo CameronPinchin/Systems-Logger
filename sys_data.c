@@ -46,7 +46,7 @@ void log_data(int cpu_temp, int mem_usage, int transmit_rate, int received_rate)
     pthread_mutex_lock(&log_mutex);
     FILE* fptr;
 
-    fptr = fopen("log_file.txt", "w");
+    fptr = fopen("log_file.txt", "a");
     if(fptr == NULL){
         printf("Error: Cannot open 'log_file.txt' \n");
         pthread_mutex_unlock(&log_mutex);
