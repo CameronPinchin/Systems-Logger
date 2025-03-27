@@ -12,12 +12,18 @@ Notes: Allow for dynamic paths for system information, as opposed
 
 */
 
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <time.h>
 #include <pthread.h>
+
+#define CPUIINFO_FILE "/sys/class/thermal/thermal_zone0/temp"
+#define MEMINFO_FILE "/proc/meminfo"
+#define NETINFO_FILE "/proc/net/dev"
+
+#define CONVERSION_CONST 1024
+#define MILIDEGREE_TO_C 1000
 
 /*
 CPU Temp: Read from /sys/class/thermal/thermal_zone0/temp
@@ -33,7 +39,7 @@ void get_timestamp(char *buffer, size_t size){
     strftime(buffer, size, "%Y-%m-%d %H:%M:%S", t);
 }
 
-void log_data(float cpu_temp, float mem_usage, float net_usage){
+void log_data(int cpu_temp, int mem_usage, int net_usage){
     pthread_mutex_lock(&log_mutex);
     FILE* fptr;
 
@@ -50,11 +56,11 @@ void log_data(float cpu_temp, float mem_usage, float net_usage){
         get_timestamp(timestamp, 20);
 
         fprintf(fptr, "[%s]\n", timestamp);
-        fprintf(fptr, "CPU Temperature: %.1f°C\n", cpu_temp);
-        fprintf(fptr, "   Memory Usage: %.1f/GB\n", mem_usage);
+        fprintf(fptr, "CPU Temperature: %d°C\n", cpu_temp);
+        fprintf(fptr, "   Memory Usage: %d GB\n", mem_usage);
         // This needs to be changed, output will not be as simple as a singular float.
         // - depends on how I extract it, can extracted transmitted and received bytes over a given protocol (eth for ex).
-        fprintf(fptr, "   Net Actvitiy: %.1fKB/s\n", net_usage);
+        fprintf(fptr, "   Net Actvitiy: %d KB/s\n", net_usage);
 
         fclose(fptr);
         pthread_mutex_unlock(&log_mutex);
@@ -63,38 +69,47 @@ void log_data(float cpu_temp, float mem_usage, float net_usage){
 
 void* get_temp(void* arg){
     FILE *temp_ptr;
-    float sys_temp;
+    int sys_temp;
 
     while(1){
         printf("[TEMP] Reading CPU Temperature... \n");
-        temp_ptr = fopen("/sys/class/thermal/thermal_zone0/temp", "r");
+        temp_ptr = fopen(CPUIINFO_FILE, "r");
 
         if(temp_ptr == NULL){
-            printf("Error! Cannot access: /sys/class/thermal/thermal_zone0/temp \n");
+            printf("Error! Cannot access: %s \n", CPUIINFO_FILE);
             exit(1);
         }
 
-        fscanf(temp_ptr, '%f', &sys_temp);
-        log_data(sys_temp, 0, 0);
+        fscanf(temp_ptr, "%d", &sys_temp);
+        fclose(temp_ptr);
+        log_data(sys_temp / MILIDEGREE_TO_C, 0, 0);
+        sleep(2);
     }
     return NULL;
 }
 
 void* get_mem_usage(void* arg){
     FILE *mem_ptr;
-    float sys_mem;
+    int sys_mem_total, sys_mem_available;
 
     while(1){
         printf("[MEMORY] Reading memory usage... \n");
-        mem_ptr = fopen("/proc/meminfo", "r");
+        mem_ptr = fopen(MEMINFO_FILE, "r");
 
         if(mem_ptr == NULL){
             printf("Error: Cannot open file: /proc/meminfo \n");
             exit(1);
         }
 
-        fscanf(mem_ptr, '%f', &sys_mem);
-        log_data(0, sys_mem, 0);
+        char line[256];
+        while(fgets(line, sizeof(line), mem_ptr)){
+            if(sscanf(line, "MemTotal: %d kB", &sys_mem_total) == 1) continue;
+            if(sscanf(line, "MemAvailable: %d kB", &sys_mem_available) == 1) break;
+        }
+        flcose(mem_ptr);
+
+        int used_mem = (sys_mem_total - sys_mem_available) / CONVERSION_CONST;
+        log_data(0, used_mem, 0);
         sleep(3);
     }
     return NULL;
@@ -102,20 +117,35 @@ void* get_mem_usage(void* arg){
 
 void* get_net_usage(void* arg){
     FILE *net_ptr;
-    float sys_net;
-
+    int sys_net;
+    int sys_received, sys_transmitted;
+    int last_received = 0, last_transmitted = 0;
     while(1){
         printf("[NET] Reading net usage... \n");
-        net_ptr = fopen("/proc/net/dev", "r");
+        net_ptr = fopen(NETINFO_FILE, "r");
 
         if(net_ptr == NULL){
-            printf("Error: Could not open: /proc/net/dev \n");
+            printf("Error: Could not open: %s \n", NETINFO_FILE);
             exit(1);
         }
 
-        fscanf(net_ptr, '%f', sys_net);
-        log_data(0, 0, sys_net);
-        sleep(4);
+        char lines[256];
+
+        while(fgets(lines, sizeof(lines), net_ptr)){
+            if(strstr(lines, "lo")){
+                sscanf(lines, "%*s %d %*d %*d %*d %*d %*d %*d %*d %d", &sys_received, &sys_transmitted);
+                break;
+            }
+        }
+
+        int received_rate = (sys_received - last_received) / CONVERSION_CONST;
+        int transmitted_rate = (sys_transmitted - last_transmitted) / CONVERSION_CONST;
+
+        last_received = sys_received;
+        last_transmitted = sys_transmitted;
+
+        log_data(0, 0, last_received + last_transmitted);
+
     }
     return NULL;
 }
@@ -124,7 +154,7 @@ int main() {
     pthread_t temp_thread, mem_thread, net_thread;
 
     FILE *fptr;
-    fptr = fopen("/log_file.txt", "w");
+    fptr = fopen("log_file.txt", "w");
 
     if(fptr){
         fprintf(fptr, "SYSTEM LOG STARTED \n");
