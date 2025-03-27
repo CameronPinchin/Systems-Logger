@@ -107,14 +107,16 @@ void* get_temp(void* arg){
 
         fclose(temp_ptr);
 
-        pthread_mutex_lock(&data_mutex);
         float temp_in_c = sys_temp / 1000.0f;
         cpu_temp = (int)round(temp_in_c);
+
+        pthread_mutex_lock(&data_mutex);
+        signal_data_ready();
         pthread_mutex_unlock(&data_mutex);
 
-        printf("[DEBUG] Temp calling signal_data_ready()\n");
+        //printf("[DEBUG] Temp calling signal_data_ready()\n");
 
-        signal_data_ready();
+        
         sleep(5);
     }
     return NULL;
@@ -140,12 +142,13 @@ void* get_mem_usage(void* arg){
         }
         fclose(mem_ptr);
         
-        pthread_mutex_lock(&data_mutex);
         mem_usage = (sys_mem_total - sys_mem_available) / CONVERSION_CONST;
+        pthread_mutex_lock(&data_mutex);
+        signal_data_ready();
         pthread_mutex_unlock(&data_mutex);
 
-        printf("[DEBUG] Memory calling signal_data_ready()\n");
-        signal_data_ready();
+        //printf("[DEBUG] Memory calling signal_data_ready()\n");
+        
         sleep(5);
     
     }
@@ -186,6 +189,7 @@ void* get_net_usage(void* arg){
         pthread_mutex_lock(&data_mutex);
         received_rate = (int)round((float)received_diff/ 1024.0);  
         transmit_rate = (int)round((float)transmitted_diff / 1024.0);  
+        signal_data_ready();
         pthread_mutex_unlock(&data_mutex);
 
 
@@ -193,9 +197,9 @@ void* get_net_usage(void* arg){
         last_received = sys_received;
         last_transmitted = sys_transmitted;
 
-        printf("[DEBUG] Network calling signal_data_ready()\n");
+       
 
-        signal_data_ready();
+        
         sleep(5);
 
     }
