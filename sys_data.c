@@ -89,12 +89,12 @@ void* get_temp(void* arg){
             exit(1);
         }
 
-        printf("[TEMP] Raw Temperature (in millidegrees): %d\n", sys_temp);
-
         fclose(temp_ptr);
 
-        float temp_in_c = sys_temp / 1000;
+        float temp_in_c = sys_temp / 1000.0f;
         sys_temp = (int)round(temp_in_c);
+
+        printf("[TEMP] CPU Temperature: %d°C\n", sys_temp);
 
         log_data(sys_temp, 0, 0, 0);
         sleep(2);
