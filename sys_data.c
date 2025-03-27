@@ -73,33 +73,35 @@ void* get_temp(void* arg){
     FILE *temp_ptr;
     int sys_temp;
 
+    while(!should_exit){
+        printf("[TEMP] Reading CPU Temperature... \n");
+        temp_ptr = fopen(CPUIINFO_FILE, "r");
 
-    printf("[TEMP] Reading CPU Temperature... \n");
-    temp_ptr = fopen(CPUIINFO_FILE, "r");
-
-    if(temp_ptr == NULL){
-        printf("Error! Cannot access: %s \n", CPUIINFO_FILE);
-        exit(1);
-    }
+        if(temp_ptr == NULL){
+            printf("Error! Cannot access: %s \n", CPUIINFO_FILE);
+            exit(1);
+        }
 
 
-    if(fscanf(temp_ptr, "%d", &sys_temp) != 1){
-        printf("Error: Could not read temperature. \n");
+        if(fscanf(temp_ptr, "%d", &sys_temp) != 1){
+            printf("Error: Could not read temperature. \n");
+            fclose(temp_ptr);
+            exit(1);
+        }
+
+        printf("[TEMP] Raw Temperature (in millidegrees): %d\n", sys_temp);
+
         fclose(temp_ptr);
-        exit(1);
+
+        float temp_in_c = sys_temp / 1000;
+        sys_temp = (int)round(temp_in_c);
+
+        log_data(sys_temp, 0, 0, 0);
+        sleep(2);
+        if(should_exit){
+            break;
+        }
     }
-
-    printf("[TEMP] Raw Temperature (in millidegrees): %d\n", sys_temp);
-
-    fclose(temp_ptr);
-
-    float temp_in_c = sys_temp / 1000;
-    sys_temp = (int)round(temp_in_c);
-
-    log_data(sys_temp, 0, 0, 0);
-    sleep(2);
-    should_exit = 1;
-    
     return NULL;
 }
 
@@ -107,28 +109,30 @@ void* get_mem_usage(void* arg){
     FILE *mem_ptr;
     int sys_mem_total, sys_mem_available;
 
-    
-    printf("[MEMORY] Reading memory usage... \n");
-    mem_ptr = fopen(MEMINFO_FILE, "r");
+    while(!should_exit){
+        printf("[MEMORY] Reading memory usage... \n");
+        mem_ptr = fopen(MEMINFO_FILE, "r");
 
-    if(mem_ptr == NULL){
-        printf("Error: Cannot open file: /proc/meminfo \n");
-        exit(1);
+        if(mem_ptr == NULL){
+            printf("Error: Cannot open file: /proc/meminfo \n");
+            exit(1);
+        }
+
+        char line[256];
+        while(fgets(line, sizeof(line), mem_ptr)){
+            if(sscanf(line, "MemTotal: %d kB", &sys_mem_total) == 1) continue;
+            if(sscanf(line, "MemAvailable: %d kB", &sys_mem_available) == 1) break;
+        }
+        fclose(mem_ptr);
+
+        int used_mem = (sys_mem_total - sys_mem_available) / CONVERSION_CONST;
+        
+        log_data(0, used_mem, 0, 0);
+        sleep(3);
+        if(should_exit){
+            break;
+        }
     }
-
-    char line[256];
-    while(fgets(line, sizeof(line), mem_ptr)){
-        if(sscanf(line, "MemTotal: %d kB", &sys_mem_total) == 1) continue;
-        if(sscanf(line, "MemAvailable: %d kB", &sys_mem_available) == 1) break;
-    }
-    fclose(mem_ptr);
-
-    int used_mem = (sys_mem_total - sys_mem_available) / CONVERSION_CONST;
-    
-    log_data(0, used_mem, 0, 0);
-    sleep(3);
-    should_exit = 1;
-    
     return NULL;
 }
 
@@ -137,49 +141,50 @@ void* get_net_usage(void* arg){
     int sys_net;
     unsigned long long sys_received, sys_transmitted;
     unsigned long long last_received = 0, last_transmitted = 0;
-    
-    printf("[NET] Reading net usage... \n");
-    net_ptr = fopen(NETINFO_FILE, "r");
+    while(!should_exit){
+        printf("[NET] Reading net usage... \n");
+        net_ptr = fopen(NETINFO_FILE, "r");
 
-    if(net_ptr == NULL){
-        printf("Error: Could not open: %s \n", NETINFO_FILE);
-        exit(1);
-    }
+        if(net_ptr == NULL){
+            printf("Error: Could not open: %s \n", NETINFO_FILE);
+            exit(1);
+        }
 
-    char lines[256];
+        char lines[256];
 
-    while(fgets(lines, sizeof(lines), net_ptr)){
-        unsigned long long tmp_received, tmp_transmitted;
-        if(strstr(lines, "lo")){
-            sscanf(lines, "%*s %lld %*d %*d %*d %*d %*d %*d %*d %lld", &tmp_received, &tmp_transmitted);
-            sys_received = tmp_received;
-            sys_transmitted = tmp_transmitted;
-            printf("Received: %llu, Transmitted: %llu\n", sys_received, sys_transmitted);
+        while(fgets(lines, sizeof(lines), net_ptr)){
+            unsigned long long tmp_received, tmp_transmitted;
+            if(strstr(lines, "lo")){
+                sscanf(lines, "%*s %lld %*d %*d %*d %*d %*d %*d %*d %lld", &tmp_received, &tmp_transmitted);
+                sys_received = tmp_received;
+                sys_transmitted = tmp_transmitted;
+                printf("Received: %llu, Transmitted: %llu\n", sys_received, sys_transmitted);
+                break;
+            }
+        }
+
+
+        unsigned long long received_diff = sys_received - last_received;
+        unsigned long long transmitted_diff = sys_transmitted - last_transmitted;
+
+        float received_rate = (float)received_diff/ 1024.0;  
+        float transmitted_rate = (float)transmitted_diff / 1024.0;  
+
+        printf("Received rate: %.2f KB/s, Transmitted rate: %.2f KB/s\n", received_rate, transmitted_rate);
+
+        int rounded_received_rate = (int)round(received_rate);
+        int rounded_transmit_rate = (int)round(transmitted_rate);
+
+        last_received = sys_received;
+        last_transmitted = sys_transmitted;
+
+        log_data(0, 0, rounded_transmit_rate, rounded_received_rate);
+        sleep(4);
+        if(should_exit){
             break;
         }
+
     }
-
-
-    unsigned long long received_diff = sys_received - last_received;
-    unsigned long long transmitted_diff = sys_transmitted - last_transmitted;
-
-    float received_rate = (float)received_diff/ 1024.0;  
-    float transmitted_rate = (float)transmitted_diff / 1024.0;  
-
-    printf("Received rate: %.2f KB/s, Transmitted rate: %.2f KB/s\n", received_rate, transmitted_rate);
-
-    int rounded_received_rate = (int)round(received_rate);
-    int rounded_transmit_rate = (int)round(transmitted_rate);
-
-    last_received = sys_received;
-    last_transmitted = sys_transmitted;
-
-    log_data(0, 0, rounded_transmit_rate, rounded_received_rate);
-    sleep(4);
-    
-    should_exit = 1;
-
-    
     return NULL;
 }
 
@@ -199,7 +204,7 @@ int main() {
     pthread_create(&mem_thread, NULL, get_mem_usage, NULL);
     pthread_create(&net_thread, NULL, get_net_usage, NULL);
 
-    sleep(5);
+    sleep(20);
     should_exit = 1;
 
     pthread_join(temp_thread, NULL);
