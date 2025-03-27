@@ -112,6 +112,8 @@ void* get_temp(void* arg){
         cpu_temp = (int)round(temp_in_c);
         pthread_mutex_unlock(&data_mutex);
 
+        printf("[DEBUG] Network calling signal_data_ready()\n");
+
         signal_data_ready();
         sleep(5);
     }
