@@ -84,12 +84,14 @@ void* get_temp(void* arg){
 
         if(fscanf(temp_ptr, "%d", &sys_temp) != 1){
             printf("Error: Could not read temperature. \n");
+            fclose(temp_ptr);
             exit(1);
         }
 
-        fscanf(temp_ptr, "%d", &sys_temp);
+        printf("[TEMP] Raw Temperature (in millidegrees): %d\n", sys_temp);
+
         fclose(temp_ptr);
-        sys_temp = sys_temp / MILIDEGREE_TO_C;
+        sys_temp = sys_temp / 1000;
         log_data(sys_temp, 0, 0, 0);
         sleep(2);
         if(should_exit){
