@@ -98,9 +98,7 @@ void* get_temp(void* arg){
 
         log_data(sys_temp, 0, 0, 0);
         sleep(2);
-        if(should_exit){
-            break;
-        }
+        should_exit = 1;
     }
     return NULL;
 }
@@ -129,9 +127,7 @@ void* get_mem_usage(void* arg){
         
         log_data(0, used_mem, 0, 0);
         sleep(3);
-        if(should_exit){
-            break;
-        }
+        should_exit = 1;
     }
     return NULL;
 }
@@ -180,9 +176,8 @@ void* get_net_usage(void* arg){
 
         log_data(0, 0, rounded_transmit_rate, rounded_received_rate);
         sleep(4);
-        if(should_exit){
-            break;
-        }
+        
+        should_exit = 1;
 
     }
     return NULL;
@@ -204,7 +199,7 @@ int main() {
     pthread_create(&mem_thread, NULL, get_mem_usage, NULL);
     pthread_create(&net_thread, NULL, get_net_usage, NULL);
 
-    sleep(20);
+    sleep(5);
     should_exit = 1;
 
     pthread_join(temp_thread, NULL);
