@@ -112,7 +112,7 @@ void* get_temp(void* arg){
         pthread_mutex_unlock(&data_mutex);
 
         signal_data_ready();
-        sleep(2);
+        sleep(5);
     }
     return NULL;
 }
@@ -142,7 +142,7 @@ void* get_mem_usage(void* arg){
         pthread_mutex_unlock(&data_mutex);
 
         signal_data_ready();
-        sleep(3);
+        sleep(5);
     
     }
     return NULL;
@@ -190,7 +190,7 @@ void* get_net_usage(void* arg){
         last_transmitted = sys_transmitted;
 
         signal_data_ready();
-        sleep(4);
+        sleep(5);
 
     }
     return NULL;
