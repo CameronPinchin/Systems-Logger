@@ -17,6 +17,7 @@ Notes: Allow for dynamic paths for system information, as opposed
 #include <unistd.h>
 #include <time.h>
 #include <pthread.h>
+#include <string.h>
 
 #define CPUIINFO_FILE "/sys/class/thermal/thermal_zone0/temp"
 #define MEMINFO_FILE "/proc/meminfo"
@@ -39,7 +40,7 @@ void get_timestamp(char *buffer, size_t size){
     strftime(buffer, size, "%Y-%m-%d %H:%M:%S", t);
 }
 
-void log_data(int cpu_temp, int mem_usage, int net_usage){
+void log_data(int cpu_temp, int mem_usage, int transmit_rate, int received_rate){
     pthread_mutex_lock(&log_mutex);
     FILE* fptr;
 
@@ -55,12 +56,13 @@ void log_data(int cpu_temp, int mem_usage, int net_usage){
         char timestamp[20];
         get_timestamp(timestamp, 20);
 
-        fprintf(fptr, "[%s]\n", timestamp);
-        fprintf(fptr, "CPU Temperature: %d°C\n", cpu_temp);
-        fprintf(fptr, "   Memory Usage: %d GB\n", mem_usage);
+        fprintf(fptr, "                           Timestamp: [%s]\n", timestamp);
+        fprintf(fptr, "                     CPU Temperature: %d°C\n", cpu_temp);
+        fprintf(fptr, "                        Memory Usage: %d GB\n", mem_usage);
         // This needs to be changed, output will not be as simple as a singular float.
         // - depends on how I extract it, can extracted transmitted and received bytes over a given protocol (eth for ex).
-        fprintf(fptr, "   Net Actvitiy: %d KB/s\n", net_usage);
+        fprintf(fptr, "[Interface: lo]    Transmission Rate: %d KB/s\n", transmit_rate);
+        fprintf(fptr, "[Interface: lo]        Received Rate: %d KB/s\n", received_rate);
 
         fclose(fptr);
         pthread_mutex_unlock(&log_mutex);
@@ -82,7 +84,7 @@ void* get_temp(void* arg){
 
         fscanf(temp_ptr, "%d", &sys_temp);
         fclose(temp_ptr);
-        log_data(sys_temp / MILIDEGREE_TO_C, 0, 0);
+        log_data(sys_temp / MILIDEGREE_TO_C, 0, 0, 0);
         sleep(2);
     }
     return NULL;
@@ -106,10 +108,10 @@ void* get_mem_usage(void* arg){
             if(sscanf(line, "MemTotal: %d kB", &sys_mem_total) == 1) continue;
             if(sscanf(line, "MemAvailable: %d kB", &sys_mem_available) == 1) break;
         }
-        flcose(mem_ptr);
+        fclose(mem_ptr);
 
         int used_mem = (sys_mem_total - sys_mem_available) / CONVERSION_CONST;
-        log_data(0, used_mem, 0);
+        log_data(0, used_mem, 0, 0);
         sleep(3);
     }
     return NULL;
@@ -144,7 +146,7 @@ void* get_net_usage(void* arg){
         last_received = sys_received;
         last_transmitted = sys_transmitted;
 
-        log_data(0, 0, last_received + last_transmitted);
+        log_data(0, 0, transmitted_rate, received_rate);
 
     }
     return NULL;
