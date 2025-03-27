@@ -78,9 +78,8 @@ void signal_data_ready(){
 
     if(ready_count == 3){
         log_data();
+        ready_count = 0;
         pthread_cond_broadcast(&data_ready);
-    } else {
-        pthread_cond_wait(&data_ready, &data_mutex);
     }
 
     pthread_mutex_unlock(&data_mutex);
