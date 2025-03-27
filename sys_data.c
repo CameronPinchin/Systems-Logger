@@ -33,7 +33,11 @@ Memory Usage: Parse /proc/meminfo
 Network Stats: Parse /proc/net/dev
 */
 
-pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t data_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t data_ready = PTHREAD_COND_INITIALIZER;
+
+int cpu_temp = -1, mem_usage = -1, transmit_rate = -1, received_rate = -1;
+int ready_count = 0;
 int should_exit = 0;
 
 void get_timestamp(char *buffer, size_t size){
@@ -42,14 +46,14 @@ void get_timestamp(char *buffer, size_t size){
     strftime(buffer, size, "%Y-%m-%d %H:%M:%S", t);
 }
 
-void log_data(int cpu_temp, int mem_usage, int transmit_rate, int received_rate){
-    pthread_mutex_lock(&log_mutex);
+void log_data(){
+    pthread_mutex_lock(&data_mutex);
     FILE* fptr;
 
     fptr = fopen("log_file.txt", "a");
     if(fptr == NULL){
         printf("Error: Cannot open 'log_file.txt' \n");
-        pthread_mutex_unlock(&log_mutex);
+        pthread_mutex_unlock(&data_mutex);
         exit(1);
     }
 
@@ -59,14 +63,27 @@ void log_data(int cpu_temp, int mem_usage, int transmit_rate, int received_rate)
     fprintf(fptr, "                           Timestamp: [%s]\n", timestamp);
     fprintf(fptr, "                     CPU Temperature: %d°C\n", cpu_temp);
     fprintf(fptr, "                        Memory Usage: %d mB\n", mem_usage);
-    // This needs to be changed, output will not be as simple as a singular float.
-    // - depends on how I extract it, can extracted transmitted and received bytes over a given protocol (eth for ex).
     fprintf(fptr, "[Interface: lo]    Transmission Rate: %d KB/s\n", transmit_rate);
     fprintf(fptr, "[Interface: lo]        Received Rate: %d KB/s\n", received_rate);
-
     fclose(fptr);
-    pthread_mutex_unlock(&log_mutex);
+
+    ready_count = 0;
+    pthread_mutex_unlock(&data_mutex);
     
+}
+
+void signal_data_ready(){
+    pthread_mutex_lock(&data_mutex);
+    ready_count++;
+
+    if(ready_count == 3){
+        log_data();
+        pthread_cond_broadcast(&data_ready);
+    } else {
+        pthread_cond_wait(&data_ready, &data_mutex);
+    }
+
+    pthread_mutex_unlock(&data_mutex);
 }
 
 void* get_temp(void* arg){
@@ -91,16 +108,13 @@ void* get_temp(void* arg){
 
         fclose(temp_ptr);
 
+        pthread_mutex_lock(&data_mutex);
         float temp_in_c = sys_temp / 1000.0f;
-        sys_temp = (int)round(temp_in_c);
+        cpu_temp = (int)round(temp_in_c);
+        pthread_mutex_unlock(&data_mutex);
 
-        printf("[TEMP] CPU Temperature: %d°C\n", sys_temp);
-
-        log_data(sys_temp, 0, 0, 0);
+        signal_data_ready();
         sleep(2);
-        if(should_exit){
-            break;
-        }
     }
     return NULL;
 }
@@ -124,14 +138,14 @@ void* get_mem_usage(void* arg){
             if(sscanf(line, "MemAvailable: %d kB", &sys_mem_available) == 1) break;
         }
         fclose(mem_ptr);
-
-        int used_mem = (sys_mem_total - sys_mem_available) / CONVERSION_CONST;
         
-        log_data(0, used_mem, 0, 0);
+        pthread_mutex_lock(&data_mutex);
+        mem_usage = (sys_mem_total - sys_mem_available) / CONVERSION_CONST;
+        pthread_mutex_unlock(&data_mutex);
+
+        signal_data_ready();
         sleep(3);
-        if(should_exit){
-            break;
-        }
+    
     }
     return NULL;
 }
@@ -167,22 +181,18 @@ void* get_net_usage(void* arg){
         unsigned long long received_diff = sys_received - last_received;
         unsigned long long transmitted_diff = sys_transmitted - last_transmitted;
 
-        float received_rate = (float)received_diff/ 1024.0;  
-        float transmitted_rate = (float)transmitted_diff / 1024.0;  
+        pthread_mutex_lock(&data_mutex);
+        received_rate = (int)round((float)received_diff/ 1024.0);  
+        transmit_rate = (int)round((float)transmitted_diff / 1024.0);  
+        pthread_mutex_unlock(&data_mutex);
 
-        printf("Received rate: %.2f KB/s, Transmitted rate: %.2f KB/s\n", received_rate, transmitted_rate);
 
-        int rounded_received_rate = (int)round(received_rate);
-        int rounded_transmit_rate = (int)round(transmitted_rate);
 
         last_received = sys_received;
         last_transmitted = sys_transmitted;
 
-        log_data(0, 0, rounded_transmit_rate, rounded_received_rate);
+        signal_data_ready();
         sleep(4);
-        if(should_exit){
-            break;
-        }
 
     }
     return NULL;
