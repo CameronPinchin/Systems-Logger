@@ -83,8 +83,8 @@ void* get_temp(void* arg){
 
         fscanf(temp_ptr, "%d", &sys_temp);
         fclose(temp_ptr);
-        
-        log_data(sys_temp / MILIDEGREE_TO_C, 0, 0, 0);
+        sys_temp = sys_temp / MILIDEGREE_TO_C;
+        log_data(sys_temp, 0, 0, 0);
         sleep(2);
         if(should_exit){
             break;
@@ -147,7 +147,7 @@ void* get_net_usage(void* arg){
             }
         }
 
-        int received_rate = (sys_received - last_received) / CONVERSION_CONST;
+        int received_rate = (sys_received - last_received) / 1024;
         int transmitted_rate = (sys_transmitted - last_transmitted) / CONVERSION_CONST;
 
         last_received = sys_received;
