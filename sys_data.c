@@ -80,6 +80,9 @@ void signal_data_ready(){
         ready_count = 0;
         printf("[DEBUG] Resetting ready_count \n");
         pthread_cond_broadcast(&data_ready);
+    } else {
+        // Wait until all threads have sent their data
+        pthread_cond_wait(&data_ready, &data_mutex);
     }
     printf("[DEBUG] After signal: ready_count = %d \n", ready_count);
     pthread_mutex_unlock(&data_mutex);
