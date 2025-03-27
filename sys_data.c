@@ -155,7 +155,7 @@ void* get_net_usage(void* arg){
         while(fgets(lines, sizeof(lines), net_ptr)){
             unsigned long long tmp_received, tmp_transmitted;
             if(strstr(lines, "lo")){
-                sscanf(lines, "%*s %d %*d %*d %*d %*d %*d %*d %*d %d", &tmp_received, &tmp_transmitted);
+                sscanf(lines, "%*s %lld %*d %*d %*d %*d %*d %*d %*d %lld", &tmp_received, &tmp_transmitted);
                 sys_received = tmp_received;
                 sys_transmitted = tmp_transmitted;
                 printf("Received: %llu, Transmitted: %llu\n", sys_received, sys_transmitted);
