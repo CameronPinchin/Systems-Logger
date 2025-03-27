@@ -198,8 +198,6 @@ void* get_net_usage(void* arg){
         last_transmitted = sys_transmitted;
 
        
-
-        
         sleep(5);
 
     }
@@ -222,7 +220,7 @@ int main() {
     pthread_create(&mem_thread, NULL, get_mem_usage, NULL);
     pthread_create(&net_thread, NULL, get_net_usage, NULL);
 
-    sleep(20);
+    sleep(15);
     should_exit = 1;
 
     pthread_join(temp_thread, NULL);
