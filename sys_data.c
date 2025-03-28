@@ -30,12 +30,14 @@ int cpu_temp = -1, mem_usage = -1, transmit_rate = -1, received_rate = -1;
 int ready_count = 0;
 int should_exit = 0;
 
+// Function for gathering the timestamp of a given log.
 void get_timestamp(char *buffer, size_t size){
     time_t now = time(NULL);
     struct tm *t = localtime(&now);
     strftime(buffer, size, "%Y-%m-%d %H:%M:%S", t);
 }
 
+// Function dedicated to logging data. 
 void log_data(){
     pthread_mutex_lock(&data_mutex);
     FILE* fptr;
@@ -71,6 +73,7 @@ void signal_data_ready(){
     } 
 }
 
+// Function to gather the temperature of the CPU.
 void* get_temp(void* arg){
     FILE *temp_ptr;
     int sys_temp;
@@ -105,6 +108,7 @@ void* get_temp(void* arg){
     return NULL;
 }
 
+// Function for gathering memory usage, scaled to mB for Pi memory usage.
 void* get_mem_usage(void* arg){
     FILE *mem_ptr;
     int sys_mem_total, sys_mem_available;
@@ -136,6 +140,7 @@ void* get_mem_usage(void* arg){
     return NULL;
 }
 
+//  Function that gathers net usage (bytes transmitted, bytes received).
 void* get_net_usage(void* arg){
     FILE *net_ptr;
     unsigned long long sys_received, sys_transmitted;
@@ -176,6 +181,7 @@ void* get_net_usage(void* arg){
 }
 
 int main() {
+    // Thread declaration, creation, then calling pthread_join().
     pthread_t temp_thread, mem_thread, net_thread;
 
     FILE *fptr;
@@ -194,6 +200,7 @@ int main() {
     sleep(10);
     should_exit = 1; 
 
+    // allow threads to finish execution then terminate.
     pthread_join(temp_thread, NULL);
     pthread_join(mem_thread, NULL);
     pthread_join(net_thread, NULL);
